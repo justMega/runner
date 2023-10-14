@@ -1,3 +1,3 @@
 # runner
-Program za vtomatsko testiranje c++ programov 
+Program za avtomatsko testiranje c++ programov 
 za infoirmacije python3 runner.py -h
