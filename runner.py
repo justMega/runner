@@ -4,7 +4,7 @@ import os
 import time
 import multiprocessing
 
-def getTests():
+def getTests(testFolder):
     files = os.listdir(testFolder)
     tests = dict()
     results = dict()
@@ -79,7 +79,7 @@ if compileProcess.returncode == 0:
     print("Compilation successful.") 
     # Run the compiled program 
     # Command to execute the compiled program 
-    (tests, results) = getTests()
+    (tests, results) = getTests(testFolder)
     testInterval = sorted(tests.keys())
     testTime = 2
     if len(sys.argv) == 5 or len(sys.argv) == 7:
