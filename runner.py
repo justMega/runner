@@ -8,7 +8,7 @@ def getFiles(testFolder, fileExtension):
     out = dict() 
     for file in os.listdir(testFolder):
         if file.endswith(fileExtension):
-            numb = file.split(".")[0].replace("test", "")
+            numb = ''.join(c for c in file if c.isdigit())
             if numb[0] == "0":
                 numb = numb[1:]
             numb = int(numb)
@@ -18,11 +18,10 @@ def getFiles(testFolder, fileExtension):
 def runFunc(testName, testNumb, resName, testFolder, program):
     inF = open(testFolder +"/"+ testName, "rb")
     inFile = inF.read()
-    pr = program.replace(".cpp", "")
     startTime = time.time()
     # Run the compiled program 
     # Command to execute the compiled program 
-    runProcess = subprocess.run(f"./{pr}", input=inFile ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    runProcess = subprocess.run(f"./{program}", input=inFile ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     timeDelta = time.time()-startTime
     inF.close()
 
@@ -89,7 +88,7 @@ for testNumb in testInterval:
     resName = results[testNumb]
     
     startTime = time.time()
-    p = multiprocessing.Process(target=runFunc, name="runFunc", args=(testName, testNumb,resName, testFolder, program))
+    p = multiprocessing.Process(target=runFunc, name="runFunc", args=(testName, testNumb,resName, testFolder, programName))
     p.start() 
     while p.is_alive() and time.time() - startTime <= testTime:
         pass
