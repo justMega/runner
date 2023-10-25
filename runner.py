@@ -24,6 +24,8 @@ def getFiles(testFolder, fileExtension):
     for file in os.listdir(testFolder):
         if file.endswith(fileExtension):
             numb = ''.join(c for c in file if c.isdigit())
+            if len(numb) == 0:
+                continue
             if numb[0] == "0":
                 numb = numb[1:]
             numb = int(numb)
