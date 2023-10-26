@@ -114,7 +114,7 @@ if args.fuzzy:
             print(f"\033[1;32m{outStr:<15} [*]\033[0;0m")
         else:
             print(f"\033[1;31m{outStr:<15} [X]\033[0;0m")
-            fileName = f"fuzzyTest{i+1}.in"
+            fileName = f"{testFolder}/fuzzyTest{i+1}.in"
             f = open(fileName, "w")
             print(test)
             f.write(test)
