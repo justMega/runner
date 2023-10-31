@@ -71,8 +71,9 @@ parser.add_argument("workingProgram",nargs="?", default=".", help="OPTIONAL (use
 parser.add_argument("testGenProgram", nargs="?", default=".", help="OPTIONAL (use with -f/--fuzzy only!!) program that generetes input ending in .py")
 
 parser.add_argument("-f", "--fuzzy", help="enable fuzzy testing", action='store_true')
+parser.add_argument("-nc", "--noCompile", help="when used with -f/--fuzzy allows the use of precompiled working program", action='store_true')
 parser.add_argument("-t", "--timeoutTime", help="define timeout time", type=float)
-parser.add_argument("-i", "--interval", help="define interval as x1-x2 or if used with -f/--fuzzy testing just x1",)
+parser.add_argument("-i", "--interval", help="define interval as x1-x2 or if used with -f/--fuzzy just x1",)
 args = parser.parse_args()
 
 program = args.programName
@@ -92,15 +93,18 @@ if args.fuzzy:
     if workingProgram == "." or testGenProgram == ".":
         print("Please list all argument required for fuzzing")
         exit(1)
-    workingProgramName = (workingProgram.split("/")[-1]).replace(".cpp","")
-    compileProcess = compileCpp(workingProgramName, workingProgram)
+    
+    workingProgramName = workingProgram
+    if not args.noCompile:
+        workingProgramName = (workingProgram.split("/")[-1]).replace(".cpp","")
+        compileProcess = compileCpp(workingProgramName, workingProgram)
 
     interval = 20
     if args.interval:
         print(args.interval)
         interval = int(args.interval)
 
-    compileWorkingProcess = compileCpp(workingProgramName, workingProgram)
+    #compileWorkingProcess = compileCpp(workingProgramName, workingProgram)
     for i in range(interval):
         runCmd = f"python3 {testGenProgram}"
         runPython = subprocess.run(runCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
