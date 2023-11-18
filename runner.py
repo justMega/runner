@@ -37,7 +37,7 @@ def runFunc(inData, program):
     output = runProcess.stdout.decode() 
     return output
 
-def runFuncFile(testName, testNumb, resName, testFolder, program):
+def runFuncFile(testName, testNumb, resName, testFolder, program, doPrint):
     inF = open(testFolder +"/"+ testName, "rb")
     inFile = inF.read()
     startTime = time.time()
@@ -60,7 +60,8 @@ def runFuncFile(testName, testNumb, resName, testFolder, program):
         print(f"\033[1;32m{outStr:<15} [*] {timeDelta:.6f}\033[0;0m")
     else:
         print(f"\033[1;31m{outStr:<15} [X] {timeDelta:.6f}\033[0;0m")
-        print(output)
+        if not noPrint:
+            print(output)
         print(error)
 
 parser = argparse.ArgumentParser()
@@ -71,6 +72,7 @@ parser.add_argument("workingProgram",nargs="?", default=".", help="OPTIONAL (use
 parser.add_argument("testGenProgram", nargs="?", default=".", help="OPTIONAL (use with -f/--fuzzy only!!) program that generetes input ending in .py")
 
 parser.add_argument("-f", "--fuzzy", help="enable fuzzy testing", action='store_true')
+parser.add_argument("-no", "--noPrint", help="dissable printing of wrong outputs", action='store_true')
 parser.add_argument("-nc", "--noCompile", help="when used with -f/--fuzzy allows the use of precompiled working program", action='store_true')
 parser.add_argument("-t", "--timeoutTime", help="define timeout time", type=float)
 parser.add_argument("-i", "--interval", help="define interval as x1-x2 or if used with -f/--fuzzy just x1",)
@@ -110,12 +112,17 @@ if args.fuzzy:
         runPython = subprocess.run(runCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         test = runPython.stdout.decode()
 
+        startTime = time.time()
         results = runFunc(test, workingProgramName)
+        workingDeltaTime = time.time() - startTime
+
+        startTime = time.time()
         posibleResults = runFunc(test, programName)
+        myDeltaTime = time.time() - startTime
 
         outStr = str(i+1)+"."
         if results.strip() == posibleResults.strip():
-            print(f"\033[1;32m{outStr:<15} [*]\033[0;0m")
+            print(f"\033[1;32m{outStr:<15} [*] your time: {myDeltaTime:.6f}, compered to {workingDeltaTime:.6f}\033[0;0m")
         else:
             print(f"\033[1;31m{outStr:<15} [X]\033[0;0m")
             fileName = f"{testFolder}/fuzzyTest{i+1}.in"
@@ -140,8 +147,12 @@ else:
         testName = tests[testNumb]
         resName = results[testNumb]
         
+        noPrint = False
+        if args.noPrint:
+            noPrint = True
+
         startTime = time.time()
-        p = multiprocessing.Process(target=runFuncFile, name="runFunc", args=(testName, testNumb,resName, testFolder, programName))
+        p = multiprocessing.Process(target=runFuncFile, name="runFunc", args=(testName, testNumb,resName, testFolder, programName, noPrint))
         p.start() 
         while p.is_alive() and time.time() - startTime <= testTime:
             pass
