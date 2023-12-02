@@ -64,6 +64,10 @@ def runFuncFile(testName, testNumb, resName, testFolder, program, doPrint):
             print(output)
         print(error)
 
+def saveTest(name):
+    f = open(name, "w")
+    f.write(test)
+
 parser = argparse.ArgumentParser()
 parser.add_argument("programName", help="name of the script you want to run ending in .cpp")
 parser.add_argument("testFolder", help="folder where the test are located")
@@ -134,13 +138,16 @@ if args.fuzzy:
         outStr = str(i+1)+"."
         if results.strip() == posibleResults.strip():
             print(f"\033[1;32m{outStr:<15} [*] your time: {myDeltaTime:.6f}, compered to {workingDeltaTime:.6f}\033[0;0m")
+            if myDeltaTime >= testTime:
+                fileName = f"{testFolder}/timeOutTest{i+1}.in"
+                saveTest(fileName)
         else:
             print(f"\033[1;31m{outStr:<15} [X]\033[0;0m")
             fileName = f"{testFolder}/fuzzyTest{i+1}.in"
-            f = open(fileName, "w")
+            saveTest(fileName)
             print(runPython.stderr.decode())
             print(test)
-            f.write(test)
+
 
 else:
     tests = getFiles(testFolder, ".in")
