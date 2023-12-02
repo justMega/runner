@@ -96,10 +96,15 @@ if args.fuzzy:
         print("Please list all argument required for fuzzing")
         exit(1)
     
+    isPython = False
     workingProgramName = workingProgram
     if not args.noCompile:
-        workingProgramName = (workingProgram.split("/")[-1]).replace(".cpp","")
-        compileProcess = compileCpp(workingProgramName, workingProgram)
+        if ".py" in workingProgramName:
+            isPython = True
+            print("is python")
+        else:
+            workingProgramName = (workingProgram.split("/")[-1]).replace(".cpp","")
+            compileProcess = compileCpp(workingProgramName, workingProgram)
 
     interval = 20
     if args.interval:
@@ -113,7 +118,13 @@ if args.fuzzy:
         test = runPython.stdout.decode()
 
         startTime = time.time()
-        results = runFunc(test, workingProgramName)
+        results = ""
+        if not isPython:
+            results = runFunc(test, workingProgramName)
+        else:
+            runCmd = f"python3 {workingProgramName}"
+            workingPy = subprocess.run(runCmd, input=bytes(test, "utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            results = workingPy.stdout.decode()
         workingDeltaTime = time.time() - startTime
 
         startTime = time.time()
@@ -127,6 +138,7 @@ if args.fuzzy:
             print(f"\033[1;31m{outStr:<15} [X]\033[0;0m")
             fileName = f"{testFolder}/fuzzyTest{i+1}.in"
             f = open(fileName, "w")
+            print(runPython.stderr.decode())
             print(test)
             f.write(test)
 
