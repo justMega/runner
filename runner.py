@@ -2,7 +2,17 @@ import argparse
 import subprocess 
 import os
 import time
-import multiprocessing
+
+def compareOutput(myres, correctres):
+    if "$#%" not in correctres:
+        return myres == correctres
+    beginres, endres = correctres.split("$#%")
+    endres.replace("%#$", "")
+    if myres[:len(beginres)] == beginres:
+        for vr in endres.splitlines():
+            if myres[len(beginres):] == vr:
+                return True
+    return False
 
 def compileCpp(programName, program):
     # Command to compile the C++ program 
@@ -37,32 +47,35 @@ def runFunc(inData, program):
     output = runProcess.stdout.decode() 
     return output
 
-def runFuncFile(testName, testNumb, resName, testFolder, program, doPrint):
+def runFuncFile(testName, testNumb, resName, testFolder, program, doPrint, testTime):
     inF = open(testFolder +"/"+ testName, "rb")
     inFile = inF.read()
     startTime = time.time()
     # Run the compiled program 
-    # Command to execute the compiled program 
-    runProcess = subprocess.run(f"./{program}", input=inFile ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    timeDelta = time.time()-startTime
-    inF.close()
+    # Command to execute the compiled program
+    try:
+        runProcess = subprocess.run(f"./{program}", input=inFile ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, timeout=testTime)
+        timeDelta = time.time()-startTime
+        # Get the output and error messages from the program
+        output = runProcess.stdout.decode()
+        error = runProcess.stderr.decode()
 
-    # Get the output and error messages from the program 
-    output = runProcess.stdout.decode()
-    error = runProcess.stderr.decode() 
-     
-    # Print the output and error messages
-    outF = open(testFolder +"/"+resName)
-    resFile = outF.read().strip()
-    outF.close()
-    outStr = str(testNumb)+"."
-    if output.strip() == resFile:
-        print(f"\033[1;32m{outStr:<15} [*] {timeDelta:.6f}\033[0;0m")
-    else:
-        print(f"\033[1;31m{outStr:<15} [X] {timeDelta:.6f}\033[0;0m")
-        if not noPrint:
-            print(output)
-        print(error)
+        # Print the output and error messages
+        outF = open(testFolder +"/"+resName)
+        resFile = outF.read().strip()
+        outF.close()
+        outStr = str(testNumb)+"."
+        if compareOutput(output.strip(),resFile):
+            print(f"\033[1;32m{outStr:<15} [*] {timeDelta:.6f}\033[0;0m")
+        else:
+            print(f"\033[1;31m{outStr:<15} [X] {timeDelta:.6f}\033[0;0m")
+            if not noPrint:
+                print(output)
+            print(error)
+    except subprocess.TimeoutExpired:
+        outStr = str(testNumb)+"."
+        print(f"\033[1;35m{outStr:<15} [T]\033[0;0m")
+    inF.close()
 
 def saveTest(name):
     f = open(name, "w")
@@ -136,7 +149,7 @@ if args.fuzzy:
         myDeltaTime = time.time() - startTime
 
         outStr = str(i+1)+"."
-        if results.strip() == posibleResults.strip():
+        if compareOutput(results.strip(),posibleResults.strip()):
             print(f"\033[1;32m{outStr:<15} [*] your time: {myDeltaTime:.6f}, compered to {workingDeltaTime:.6f}\033[0;0m")
             if myDeltaTime >= testTime:
                 fileName = f"{testFolder}/timeOutTest{i+1}.in"
@@ -170,14 +183,7 @@ else:
         if args.noPrint:
             noPrint = True
 
-        startTime = time.time()
-        p = multiprocessing.Process(target=runFuncFile, name="runFunc", args=(testName, testNumb,resName, testFolder, programName, noPrint))
-        p.start() 
-        while p.is_alive() and time.time() - startTime <= testTime:
-            pass
-        if p.is_alive():
-            outStr = str(testNumb)+"."
-            print(f"\033[1;35m{outStr:<15} [T]\033[0;0m")
-        p.terminate()
-        p.join()
+        runFuncFile(testName, testNumb,resName, testFolder, programName, noPrint, testTime)
+
+
         
