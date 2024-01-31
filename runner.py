@@ -10,7 +10,7 @@ def compareOutput(myres, correctres):
     endres.replace("%#$", "")
     if myres[:len(beginres)] == beginres:
         for vr in endres.splitlines():
-            if myres[len(beginres):] == vr:
+            if myres[len(beginres):] == vr.strip():
                 return True
     return False
 
