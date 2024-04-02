@@ -2,6 +2,14 @@ import argparse
 import subprocess 
 import os
 import time
+from enum import StrEnum
+
+class ProgramType(StrEnum):
+    NoLanguage = "noLanguage"
+    Cpp = ".cpp"
+    Java = ".java"
+    Python = ".py"
+    Out = ".out"
 
 def compareOutput(myres, correctres):
     if "$#%" not in correctres:
@@ -14,12 +22,24 @@ def compareOutput(myres, correctres):
                 return True
     return False
 
-def compileCpp(programName, program):
-    # Command to compile the C++ program 
-    compileArr = ["g++ -std=c++20 -o", programName, program]
-    compileCmd = " ".join(str(x) for x in compileArr)
-    # Compile the C++ program 
-    compileProcess = subprocess.run(compileCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+def compileProgram(programName, program, lang):
+    compileProcess = None
+    match lang:
+        case ProgramType.Cpp: 
+            # Command to compile the C++ program 
+            compileArr = ["g++ -std=c++20 -o", programName, program]
+            compileCmd = " ".join(str(x) for x in compileArr)
+            # Compile the C++ program 
+            compileProcess = subprocess.run(compileCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        case ProgramType.Java:
+            # Command to compile the java program 
+            compileArr = ["javac", program]
+            compileCmd = " ".join(str(x) for x in compileArr)
+            compileProcess = subprocess.run(compileCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        case _:
+            print("Language not supported, plese check your program")
+            return
+
     # Check if the compilation was not successful 
     if compileProcess.returncode != 0:
         # Print the compilation error messages 
@@ -42,19 +62,36 @@ def getFiles(testFolder, fileExtension):
             out[numb] = file 
     return out
 
-def runFunc(inData, program):
-    runProcess = subprocess.run(f"./{program}", input=bytes(inData, "utf-8") ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    output = runProcess.stdout.decode() 
-    return output
+def runFunc(lang, inData, program):
+    match lang:
+        case ProgramType.Cpp | ProgramType.Out:
+            runProcess = subprocess.run(f"./{program}", input=bytes(inData, "utf-8") ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            return runProcess.stdout.decode() 
+        case ProgramType.Java:
+            runProcess = subprocess.run(f"java {program}", input=bytes(inData, "utf-8") ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            return runProcess.stdout.decode() 
+        case ProgramType.Python:
+            runCmd = f"python3 {workingProgramName}"
+            workingPy = subprocess.run(runCmd, input=bytes(inData, "utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            return workingPy.stdout.decode()
+        case _:
+            raise Exception("Language not supported, plese check your program")
 
-def runFuncFile(testName, testNumb, resName, testFolder, program, doPrint, testTime):
+def runFuncFile(lang, testName, testNumb, resName, testFolder, program, doPrint, testTime):
     inF = open(testFolder +"/"+ testName, "rb")
     inFile = inF.read()
     startTime = time.time()
     # Run the compiled program 
     # Command to execute the compiled program
     try:
-        runProcess = subprocess.run(f"./{program}", input=inFile ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, timeout=testTime)
+        runProcess = None
+        match lang:
+            case ProgramType.Cpp:
+                runProcess = subprocess.run(f"./{program}", input=inFile ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, timeout=testTime)
+            case ProgramType.Java:
+                runProcess = subprocess.run(f"java {program}", input=inFile ,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, timeout=testTime)
+            case _:
+                raise Exception("Language not supported, plese check your program")
         timeDelta = time.time()-startTime
         # Get the output and error messages from the program
         output = runProcess.stdout.decode()
@@ -81,6 +118,18 @@ def saveTest(name):
     f = open(name, "w")
     f.write(test)
 
+def getLangType(program):
+    lang = ProgramType.NoLanguage
+    if ".cpp" in program:
+        lang = ProgramType.Cpp
+    elif ".py" in program:  
+        lang = ProgramType.Python
+    elif ".java" in program or ".class" in program:
+        lang = ProgramType.Java
+    elif "." not in program or ".out" in program:
+        lang = ProgramType.Out
+    return lang
+
 parser = argparse.ArgumentParser()
 parser.add_argument("programName", help="name of the script you want to run ending in .cpp")
 parser.add_argument("testFolder", help="folder where the test are located")
@@ -96,58 +145,55 @@ parser.add_argument("-i", "--interval", help="define interval as x1-x2 or if use
 args = parser.parse_args()
 
 program = args.programName
-programName = (program.split("/")[-1]).replace(".cpp","")
-print(programName)
 testFolder = args.testFolder
 
 testTime = 2
 if args.timeoutTime:
     testTime = args.timeoutTime
 
-compileProcess = compileCpp(programName, program)
+programName = (program.split("/")[-1]).replace(".cpp","").replace(".java", "")
+print(programName)
+lang = getLangType(program)
+compileProcess = compileProgram(programName, program, lang)
 
 if args.fuzzy:
+    # so initialize fuzzy testing 
+    # NOTE: to self we have alredy compiled the user program outside the if statement
     workingProgram = args.workingProgram
     testGenProgram = args.testGenProgram
     if workingProgram == "." or testGenProgram == ".":
         print("Please list all argument required for fuzzing")
         exit(1)
     
-    isPython = False
+    # determin the type of working program and shorten the name if needed
     workingProgramName = workingProgram
+    worklang = getLangType(workingProgram)
     if not args.noCompile:
-        if ".py" in workingProgramName:
-            isPython = True
-            print("is python")
-        else:
-            workingProgramName = (workingProgram.split("/")[-1]).replace(".cpp","")
-            compileProcess = compileCpp(workingProgramName, workingProgram)
+        workingProgramName = (workingProgram.split("/")[-1]).replace(".cpp","").replace(".java", "")
 
+    # set interval
     interval = 20
     if args.interval:
         print(args.interval)
         interval = int(args.interval)
 
-    #compileWorkingProcess = compileCpp(workingProgramName, workingProgram)
     for i in range(interval):
+        # firt generate test input
         runCmd = f"python3 {testGenProgram}"
         runPython = subprocess.run(runCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         test = runPython.stdout.decode()
 
+        # run the test on the known working program and time it
         startTime = time.time()
-        results = ""
-        if not isPython:
-            results = runFunc(test, workingProgramName)
-        else:
-            runCmd = f"python3 {workingProgramName}"
-            workingPy = subprocess.run(runCmd, input=bytes(test, "utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-            results = workingPy.stdout.decode()
+        results = runFunc(worklang, test, workingProgramName)
         workingDeltaTime = time.time() - startTime
 
+        # run the test on the user program and time it
         startTime = time.time()
-        posibleResults = runFunc(test, programName)
+        posibleResults = runFunc(lang, test, programName)
         myDeltaTime = time.time() - startTime
 
+        # compare the results and print the result
         outStr = str(i+1)+"."
         if compareOutput(results.strip(),posibleResults.strip()):
             print(f"\033[1;32m{outStr:<15} [*] your time: {myDeltaTime:.6f}, compered to {workingDeltaTime:.6f}\033[0;0m")
@@ -161,13 +207,14 @@ if args.fuzzy:
             print(runPython.stderr.decode())
             print(test)
 
-
 else:
+    # first we read the test and results folders
     tests = getFiles(testFolder, ".in")
     results = getFiles(testFolder, ".out")
     testInterval = sorted(tests.keys())
 
     try:
+        # set interval
         if args.interval:
             interval = args.interval.split("-")
             testInterval = range(int(interval[0]), int(interval[1])+1)
@@ -175,6 +222,7 @@ else:
         print("Parameter not deffined correctly use -h for help")
         exit(1)
 
+    # run the tests for each test in interval
     for testNumb in testInterval:
         testName = tests[testNumb]
         resName = results[testNumb]
@@ -183,7 +231,7 @@ else:
         if args.noPrint:
             noPrint = True
 
-        runFuncFile(testName, testNumb,resName, testFolder, programName, noPrint, testTime)
+        runFuncFile(lang, testName, testNumb,resName, testFolder, programName, noPrint, testTime)
 
 
         
