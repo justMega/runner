@@ -98,11 +98,11 @@ def runFuncFile(lang, testName, testNumb, resName, testFolder, program, doPrint,
         error = runProcess.stderr.decode()
 
         # Print the output and error messages
-        outF = open(testFolder +"/"+resName)
+        outF = open(testFolder + "/" + resName)
         resFile = outF.read().strip()
         outF.close()
-        outStr = str(testNumb)+"."
-        if compareOutput(output.strip(),resFile):
+        outStr = str(testNumb) + "."
+        if compareOutput(output.strip(), resFile):
             print(f"\033[1;32m{outStr:<15} [*] {timeDelta:.6f}\033[0;0m")
         else:
             print(f"\033[1;31m{outStr:<15} [X] {timeDelta:.6f}\033[0;0m")
@@ -158,7 +158,7 @@ compileProcess = compileProgram(programName, program, lang)
 
 if args.fuzzy:
     # so initialize fuzzy testing 
-    # NOTE: to self we have alredy compiled the user program outside the if statement
+    # NOTE: we have alredy compiled the user program outside the if statement
     workingProgram = args.workingProgram
     testGenProgram = args.testGenProgram
     if workingProgram == "." or testGenProgram == ".":
