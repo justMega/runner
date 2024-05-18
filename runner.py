@@ -11,9 +11,22 @@ class ProgramType(StrEnum):
     Python = ".py"
     Out = ".out"
 
+def commpareStr(str1, str2):
+    str1 = str1.strip()
+    str2 = str2.strip()
+    str1 = str1.splitlines()
+    str2 = str2.splitlines()
+    if len(str1) != len(str2):
+        return False
+    for s1, s2 in zip(str1, str2):
+        if s1.strip() != s2.strip():
+            print(f"diff: {s1} {s2}")
+            return False
+    return True
+
 def compareOutput(myres, correctres):
     if "$#%" not in correctres:
-        return myres == correctres
+        return commpareStr(myres, correctres)
     beginres, endres = correctres.split("$#%")
     endres.replace("%#$", "")
     if myres[:len(beginres)] == beginres:
